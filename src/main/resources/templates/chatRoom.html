@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Room</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            background-color: #222;
+            color: #ccc;
+        }
+
+        .btn-blue {
+            background-color: #007bff; /* 파란색 배경 */
+            color: white; /* 글자 색상은 흰색 */
+            border: none; /* 버튼 테두리 제거 */
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn-blue:hover {
+            background-color: #0056b3; /* 버튼에 마우스를 올렸을 때 더 짙은 파란색 */
+        }
+
+        .chat-container {
+            display: flex;
+            height: 100vh;
+            max-height: 100%;
+        }
+
+        .chat-list {
+            width: 30%;
+            background-color: #2a2a2a;
+            padding: 10px;
+            overflow-y: scroll;
+        }
+
+        .chat-list .list-group-item {
+            background-color: #333;
+            color: #ccc;
+            border: none;
+            margin-bottom: 5px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .chat-list .list-group-item.active {
+            background-color: #444;
+        }
+
+        .chat-window {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-color: #1a1a1a;
+            padding: 20px;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: scroll;
+            padding: 10px;
+            background-color: #222;
+            border: 1px solid #444;
+        }
+
+        .chat-messages .message {
+            margin-bottom: 10px;
+        }
+
+        .chat-messages .message .sender {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .chat-messages .message.other {
+            text-align: left;
+            background-color: #b8a4a4;
+            color: #514848;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            max-width: 60%;
+            clear: both;
+            float: left;
+        }
+
+        /* Apply this to your own messages */
+        .chat-messages .message.mine {
+            text-align: right;
+            background-color: #5a67d8;
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            max-width: 60%;
+            clear: both;
+            float: right;
+        }
+
+        .chat-messages .message.center {
+            text-align: center;
+            background-color: #444;
+            color: #eee;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 5px;
+            max-width: 60%;
+            margin-left: auto;
+            margin-right: auto;
+            clear: both;
+            float: none;
+        }
+
+        .chat-footer {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #2a2a2a;
+        }
+
+        .chat-footer input {
+            flex-grow: 1;
+            background-color: #333;
+            color: #ccc;
+            border: none;
+            padding: 10px;
+            margin-right: 10px;
+        }
+
+        .chat-footer button {
+            background-color: #5a67d8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #2a2a2a;
+            padding: 10px;
+        }
+
+        .chat-header h5 {
+            margin: 0;
+            color: #ccc;
+        }
+
+        .btn-danger {
+            background-color: #e53e3e;
+        }
+
+        .profile-images-3 {
+            display: flex;
+            align-items: center;
+            justify-content: start;
+            width: 80px;
+            position: relative;
+        }
+
+        .profile-images-3 img {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        /* 4명 이상일 때 그리드 배치 */
+        .profile-images-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 25px);
+            grid-template-rows: repeat(2, 25px);
+            gap: 5px;
+        }
+
+        .profile-images-grid img {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+<<div class="chat-container">
+    <!-- Left side: Chat Room List -->
+    <div class="chat-list">
+        <div class="list-group" id="chatRoomList">
+            <div class="chat-room-create">
+                <!-- 채팅방 이름 입력 -->
+                <input type="text" id="roomName" placeholder="방이름">
+
+                <!-- 채팅방 타입 선택 -->
+                <select id="type">
+                    <option value="general">General</option>
+                    <option value="open">Open</option>
+                </select>
+
+                <!-- 닉네임 목록 입력 -->
+                <input type="text" id="nicknames" placeholder="초대할 유저">
+
+                <!-- 채팅방 생성 버튼 -->
+                <button id="createRoomBtn">Create</button>
+            </div>
+            <!-- roomList로부터 채팅방 목록 렌더링 -->
+            <div class="room-list">
+                <div class="list-group" id="roomList">
+                    <div th:each="room : ${roomList}"
+                         class="list-group-item d-flex align-items-center position-relative"
+                         style="background-color: #333; color: #ccc; border: none; margin-bottom: 10px; padding: 15px;"
+                         th:attr="data-room-id=${room.chatRoomId}, data-login-id=${user.loginId}">
+
+                        <!-- Display profile images based on userInfo size -->
+                        <div th:if="${room.userInfo.size() <= 3}">
+                            <div style="display: flex; align-items: center; justify-content: start; width: 80px; position: relative;">
+                                <img th:each="user, userStat : ${room.userInfo}"
+                                     th:src="${user.profileImageUrl}"
+                                     alt="Profile Image"
+                                     th:style="'width: 25px; height: 25px; border-radius: 50%; position: absolute; left: ' + (${userStat.index} * 10) + 'px; z-index: ' + (10 - ${userStat.index}) + ';'" />
+                            </div>
+                        </div>
+
+                        <div th:if="${room.userInfo.size() > 3}">
+                            <div style="display: grid; grid-template-columns: repeat(2, 25px); grid-template-rows: repeat(2, 25px); gap: 5px;">
+                                <img th:each="user, userStat : ${room.userInfo}"
+                                     th:if="${userStat.index < 4}"
+                                     th:src="${user.profileImageUrl}"
+                                     alt="Profile Image"
+                                     style="width: 25px; height: 25px; border-radius: 50%;" />
+                            </div>
+                        </div>
+
+                        <!-- Room Information -->
+                        <div style="flex-grow: 1; margin-left: 10px;">
+                            <div style="font-weight: bold; color: #fff;" th:text="${room.roomName}">Room Name</div>
+                            <span style="font-size: 12px; color: #aaa; margin-left: 10px;" th:text="'(' + ${room.userCount} + ')'">2</span>
+                            <div style="font-size: 12px; color: #aaa; margin-top: 5px;" th:text="${room.type}">Type</div>
+                            <div style="font-size: 12px; color: #aaa; margin-top: 5px;" class="recent-message" th:text="${room.recentMessage}">Recent message here</div>
+                        </div>
+
+                        <!-- Notification Count -->
+                        <div style="margin-left: auto; display: flex; align-items: center;">
+                            <span class="notification-count"
+                                  style="background-color: #f00; color: white; border-radius: 50%; padding: 5px 10px; font-size: 12px;"
+                                  th:text="${room.notificationCount}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right side: Chat Room -->
+    <div class="chat-window">
+        <div class="chat-header" style="display: flex; align-items: center;">
+            <!-- 채팅방 이름 -->
+            <h5 th:text="${room.roomName}" style="flex: 1;">Chat Room</h5>
+
+            <!-- 초대할 유저 입력 필드 -->
+            <input type="text" id="nicknamesInput" placeholder="초대할 유저" style="margin-right: 10px; padding: 5px;">
+
+            <!-- Invite 버튼 -->
+            <button class="btn btn-blue btn-sm" id="inviteBtn" style="margin-right: 10px;">Invite</button>
+
+            <!-- Leave 버튼 -->
+            <button class="btn btn-danger btn-sm" id="leaveBtn">Leave</button>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Messages will be appended here -->
+            <div th:each="message : ${messages}">
+                <div th:if="${message.type == T(sisyphus_core.sisyphus_core.chat.model.dto.MessageType).MESSAGE}">
+                    <div th:if="${message.senderName == loginId}" class="message mine">
+                        <p th:text="${message.message}"></p>
+                    </div>
+                    <div th:if="${message.senderName != loginId}" class="message other">
+                        <p th:text="${message.message}"></p>
+                    </div>
+                </div>
+
+                <!-- message.type이 MESSAGE가 아닐 때 -->
+                <div th:if="${message.type != T(sisyphus_core.sisyphus_core.chat.model.dto.MessageType).MESSAGE}" class="message center">
+                    <p th:text="${message.message}"></p>
+                </div>
+            </div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="messageInput" placeholder="Type a message">
+            <label for="fileInput" style="margin-right: 10px; margin-bottom: 0px; cursor: pointer; background-color: darkgray; color: white; padding: 10px 15px;">
+                Upload
+            </label>
+            <input type="file" id="fileInput" style="display: none;" multiple>
+            <button type="button" id="sendBtn">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let stompClient = null;
+    const roomId = '[[${room.chatRoomId}]]'; // 방 ID
+    const senderName = '[[${user.name}]]'; // 유저 이름
+    const senderId = '[[${user.id}]]'; // 유저 ID
+
+    function connect() {
+        const socket = new SockJS('/chat');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+
+            // 채팅 메시지 구독
+            stompClient.subscribe('/topic/chatroom/' + roomId, function (message) {
+                showMessage(JSON.parse(message.body));
+            });
+            stompClient.subscribe('/queue/chatroom/list/' + senderName, function (message) {
+                const data = JSON.parse(message.body);
+
+                addRoomToList(data);
+            });
+
+            stompClient.subscribe('/queue/chatroom/' + senderName, function (message){
+                const data = JSON.parse(message.body);
+
+                console.log("수신한 데이터:" , data);
+
+                // roomId가 일치하는 채팅방을 찾음
+                const roomElement = document.querySelector(`[data-room-id='${data.roomId}']`);
+                if (!roomElement) {
+                    console.error("채팅방을 찾을 수 없습니다. roomId: ", data.roomId);
+                } else {
+                    console.log("채팅방이 확인되었습니다. roomId: ", data.roomId);
+                }
+
+                if (roomElement) {
+                    // 최근 메시지 요소 업데이트
+                    if (isUserInRoom(data.roomId)) {
+                        resetNotification(data.roomId, senderName); // 알림을 0으로 설정
+                    }
+
+                    const recentMessageElement = roomElement.querySelector('.recent-message');
+                    if (!recentMessageElement) {
+                        console.error("최근 메시지 요소를 찾을 수 없습니다.");
+                    } else {
+                        recentMessageElement.textContent = data.message;
+                        console.log("최근 메시지가 업데이트되었습니다.");
+                    }
+
+                    const notificationCountElement = roomElement.querySelector('.notification-count');
+                    if (notificationCountElement) {
+                        // 현재 notificationCount 값을 가져와서 1 증가시킴
+                        let currentCount = parseInt(notificationCountElement.textContent) || 0;
+                        currentCount += 1;
+
+                        // DOM에 업데이트
+                        notificationCountElement.textContent = currentCount;
+
+                        // notificationCount가 0보다 클 때만 스타일을 적용 (필요한 경우)
+                        if (currentCount > 0) {
+                            notificationCountElement.style.display = "inline-block";
+                        }
+                    } else {
+                        console.error("notificationCount 요소를 찾을 수 없습니다.");
+                    }
+                }
+            });
+        });
+    }
+
+    function addRoomToList(room) {
+        const roomListElement = document.querySelector('#room-list'); // roomList가 있는 컨테이너 요소
+
+        // 새 채팅방의 HTML 요소를 동적으로 생성
+        const newRoomElement = document.createElement('a');
+        newRoomElement.setAttribute('href', `/chat/${room.chatRoomId}/${senderName}`);
+        newRoomElement.classList.add('list-group-item', 'list-group-item-action', 'd-flex', 'align-items-center', 'position-relative');
+        newRoomElement.style.backgroundColor = '#333';
+        newRoomElement.style.color = '#ccc';
+        newRoomElement.style.border = 'none';
+        newRoomElement.style.marginBottom = '10px';
+        newRoomElement.style.padding = '15px';
+
+        // 프로필 이미지 추가 (3개 이하일 때는 겹치게, 4개 이상일 때는 그리드로)
+        let profileImagesHtml = '';
+        if (room.profileImages.length <= 3) {
+            profileImagesHtml = `
+            <div style="display: flex; align-items: center; justify-content: start; width: 80px; position: relative;">
+                ${room.profileImages.map((url, index) =>
+                index < 3 ?
+                    `<img src="${url}" alt="Profile Image"
+                         style="width: 25px; height: 25px; border-radius: 50%; position: absolute;
+                                left: ${index * 10}px; z-index: ${10 - index};">` : ''
+            ).join('')}
+            </div>
+        `;
+        } else {
+            profileImagesHtml = `
+            <div style="display: grid; grid-template-columns: repeat(2, 25px); grid-template-rows: repeat(2, 25px); gap: 5px;">
+                ${room.profileImages.slice(0, 4).map(url =>
+                `<img src="${url}" alt="Profile Image"
+                         style="width: 25px; height: 25px; border-radius: 50%;">`
+            ).join('')}
+            </div>
+        `;
+        }
+
+        // 방 이름, 유저 수, 최근 메시지 등의 정보를 HTML로 생성
+        newRoomElement.innerHTML = `
+        ${profileImagesHtml}
+        <div style="flex-grow: 1;">
+            <div style="font-weight: bold; color: #fff;">${room.roomName}</div>
+            <span style="font-size: 12px; color: #aaa; margin-left: 10px;">(${room.userCount})</span>
+            <div style="font-size: 12px; color: #aaa; margin-top: 5px;">${room.type}</div>
+            <div style="font-size: 12px; color: #aaa; margin-top: 5px;" class="recent-message">${room.recentMessage}</div>
+        </div>
+        <div style="margin-left: auto; display: flex; align-items: center;">
+            <span class="notification-count"
+                  style="background-color: #f00; color: white; border-radius: 50%; padding: 5px 10px; font-size: 12px;">
+                ${room.notificationCount}
+            </span>
+        </div>
+    `;
+
+        // 리스트의 맨 앞에 새 항목 추가
+        roomListElement.insertBefore(newRoomElement, roomListElement.firstChild);
+    }
+
+    function isUserInRoom(chatRoomId) {
+        // 이 함수는 사용자가 현재 이 roomId에 있는지 여부를 확인하는 로직
+        return roomId === chatRoomId; // 이 예시는 사용자가 항상 채팅방에 있다고 가정
+    }
+
+    function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value;
+        if (message && stompClient) {
+            stompClient.send('/app/chat/send', {}, JSON.stringify({
+                roomId: roomId,
+                message: message,
+                senderName: senderName,
+                senderId: senderId
+            }));
+            messageInput.value = '';
+        }
+    }
+
+    function showMessage(message) {
+        const messageContainer = document.getElementById('chat-messages');
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message');
+
+        if (message.senderName === senderName) {
+            messageElement.classList.add('mine');
+        } else {
+            messageElement.classList.add('other');
+        }
+
+        if (message.type === 'FILE') {
+            // 파일 URL들을 세미콜론으로 분리
+            const fileUrls = message.message.split(',');
+            fileUrls.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = 'Uploaded Image';
+                img.style.maxWidth = '200px';
+                img.style.marginTop = '5px';
+                messageElement.appendChild(img);
+            });
+        } else {
+            // 일반 텍스트 메시지의 경우
+            messageElement.innerHTML = `${message.message}`;
+        }
+        messageContainer.appendChild(messageElement);
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+
+    function leaveRoom() {
+        // REST API 호출하여 서버에서 퇴장 처리
+        fetch('/api/chat/leave', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                chatRoomId: roomId,
+                loginId: senderName
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // "방에서 퇴장하셨습니다." 메시지를 받을 수 있음
+            })
+            .catch(error => {
+                console.error('Error during leave room:', error);
+            });
+        window.location.href = "/chat/list"; // 나가기 후 목록 페이지로 이동
+    }
+
+    document.getElementById('sendBtn').addEventListener('click', function () {
+        sendMessage();
+    });
+
+    document.getElementById('messageInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    document.getElementById('leaveBtn').addEventListener('click', function () {
+        leaveRoom();
+    });
+
+    document.getElementById('createRoomBtn').addEventListener('click', function () {
+        const loginId = senderName;
+        const roomName = document.getElementById('roomName').value;
+        const type = document.getElementById('type').value;
+        const nicknames = document.getElementById('nicknames').value.split(',').map(nickname => nickname.trim());
+
+        // 유효성 검사
+        if (!nicknames.length || !type) {
+            document.getElementById('resultMessage').innerText = 'Please fill in all fields.';
+            return;
+        }
+
+        // 요청 본문 데이터 구성
+        const requestData = {
+            loginId : loginId,
+            roomName: roomName,
+            type: type,
+            nicknames: nicknames
+        };
+
+        // API 요청 보내기
+        fetch('/api/chat/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+            .then(response => response.json())
+            .then(message =>
+                alert(message))
+            .catch(error => {
+                alert(error.message);  // 실패 시 에러 메시지 알림
+            });
+    });
+
+    document.getElementById('inviteBtn').addEventListener('click', function() {
+        // Get the nicknames from the input field
+        const nicknames = document.getElementById('nicknamesInput').value.split(',').map(nickname => nickname.trim());
+        console.log(nicknames, roomId);
+
+        const inviteRequest = {
+            chatRoomId: roomId,
+            nicknames: nicknames,
+            invitorName : senderName
+        };
+
+        fetch('/api/chat/invite', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(inviteRequest)
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.text();
+                }
+                throw new Error('초대에 실패하였습니다.');
+            })
+            .then(message => {
+                alert(message);  // 초대 성공 메시지 알림
+            })
+            .catch(error => {
+                alert(error.message);  // 실패 시 에러 메시지 알림
+            });
+    });
+
+    document.querySelectorAll('.list-group-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const roomId = this.getAttribute('data-room-id');
+            const nickname = this.getAttribute('data-login-id');
+
+            console.log(roomId, nickname); // 여기서 값이 1과 test1로 나오는지 확인합니다.
+
+            // 채팅방에 입장하는 시점에 알림 리셋
+            resetNotification(roomId, nickname);
+
+            window.location.href = `/chat/${roomId}/${nickname}`;
+        });
+    });
+
+    function resetNotification(roomId, nickname){
+        const notificationData = {
+            roomId: roomId,
+            nickname: nickname
+        };
+
+        stompClient.send("/app/chat/reset/notification", {}, JSON.stringify(notificationData));
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+        const files = event.target.files;
+        if (files.length > 0) {
+            const formData = new FormData();
+            formData.append('roomId', roomId);
+            formData.append('loginId', senderName)
+            for (const file of files) {
+                formData.append('files', file);
+            }
+
+            // 파일 업로드 API 호출 (POST /api/file/upload)
+            fetch('/api/file/upload', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.text())
+                .then(result => {
+                    console.log('파일 업로드 성공:', result);
+                    alert('파일 업로드 성공');
+                })
+                .catch(error => {
+                    console.error('파일 업로드 실패:', error);
+                    alert('파일 업로드 실패');
+                });
+        }
+    });
+
+    connect();
+</script>
+
+</body>
+</html>
