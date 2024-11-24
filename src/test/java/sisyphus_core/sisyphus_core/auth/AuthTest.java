@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -16,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.web.multipart.MultipartFile;
 import sisyphus_core.sisyphus_core.auth.exception.DuplicateUserLoginIdException;
 import sisyphus_core.sisyphus_core.auth.exception.DuplicateUserNicknameException;
 import sisyphus_core.sisyphus_core.auth.model.Token;
@@ -31,7 +31,6 @@ import sisyphus_core.sisyphus_core.auth.service.TokenService;
 import sisyphus_core.sisyphus_core.auth.service.UserService;
 import sisyphus_core.sisyphus_core.chat.model.ChatRoom;
 import sisyphus_core.sisyphus_core.chat.model.dto.ChatRoomRequest;
-import sisyphus_core.sisyphus_core.chat.model.dto.ChatRoomResponse;
 import sisyphus_core.sisyphus_core.chat.service.ChatRoomService;
 
 import java.util.List;
@@ -225,8 +224,8 @@ public class AuthTest {
                 .nicknames(nicknames)
                 .type("open")
                 .build();
-
-        chatRoomService.createChatRoom(chatRegister, "테스트1");
+        MultipartFile file =null;
+        chatRoomService.createChatRoom(chatRegister, file,"테스트1");
 
 
         userService.withdrawal("테스트1");

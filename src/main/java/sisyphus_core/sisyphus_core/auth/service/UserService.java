@@ -30,6 +30,7 @@ import sisyphus_core.sisyphus_core.chat.service.MessageService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,6 +59,10 @@ public class UserService {
         if (userRepository.findByNickname(register.getNickname()).isPresent()) {
             throw new DuplicateUserException("이미 존재하는 아이디입니다.");
         }
+        String profileImage = register.getProfileImageUrl();
+        if(register.getProfileImageUrl() == null){
+            profileImage = defProfileImage;
+        }
 
         User user = User.builder()
                 .loginId(register.getLoginId())
@@ -66,7 +71,8 @@ public class UserService {
                 .email(register.getEmail())
                 .name(register.getName())
                 .describe(" ")
-                .profileImageUrl(defProfileImage)
+                .phoneNumber(register.getPhoneNumber())
+                .profileImageUrl(profileImage)
                 .state(UserState.ACTIVE)
                 .userRole(UserRole.GENERAL)
                 .build();
@@ -102,7 +108,7 @@ public class UserService {
         List<UserFollower> userFollowerList = userFollowerRepository.findByUser(user);
         for (UserFollower userFollower : userFollowerList) {
             User followerUser = userFollower.getFollowerUser();
-            template.convertAndSend("/queue/state/" + followerUser.getNickname());
+            template.convertAndSend("/queue/state/" + followerUser.getNickname(), user.getNickname());
         }
         return new TokenResponse(accessToken, user.getNickname());
     }
@@ -226,8 +232,13 @@ public class UserService {
 
     //유저 조회
     @Transactional
-    public UserResponse userInfo(String loginId){
-        User user = userRepository.findByLoginId(loginId).orElseThrow(() -> new UsernameNotFoundException("일치하는 유저가 없습니다."));
+    public UserResponse userInfo(String loginId,String nickname){
+        User user;
+        if(nickname == null){
+            user = userRepository.findByLoginId(loginId).orElseThrow(() -> new UsernameNotFoundException("일치하는 유저가 없습니다."));
+        } else {
+            user = userRepository.findByNickname(nickname).orElseThrow(() -> new UsernameNotFoundException("일치하는 유저가 없습니다."));
+        }
         return toUserResponseOnce(user);
     }
 
@@ -248,7 +259,11 @@ public class UserService {
 
     @Transactional
     public User findByNickname(String nickname) {
-        return userRepository.findByNickname(nickname).get();
+        Optional<User> optionalUser = userRepository.findByNickname(nickname);
+        if(optionalUser.isEmpty()){
+            return null;
+        }
+        return optionalUser.get();
     }
 
     protected List<UserResponse> toUserResponse(List<User> users) {
@@ -276,6 +291,7 @@ public class UserService {
                 .name(user.getName())
                 .nickname(user.getNickname())
                 .userRole(user.getUserRole())
+                .phoneNumber(user.getPhoneNumber())
                 .profileImageUrl(user.getProfileImageUrl())
                 .state(user.getState())
                 .build();

@@ -24,9 +24,14 @@ public class FileController {
         return ResponseEntity.ok().body(fileService.upload(files, roomId, auth.getName()));
     }
 
-    @GetMapping("/find")
+    @GetMapping("/user/find")
     public ResponseEntity<List<UploadFileResponse>> findByUser(Authentication auth){
         return ResponseEntity.ok().body(fileService.findByUser(auth.getName()));
+    }
+
+    @GetMapping("/chatroom/find")
+    public ResponseEntity<List<UploadFileResponse>> findByChatRoom(@RequestParam("chatRoomId") Long chatRoomId){
+        return ResponseEntity.ok().body(fileService.findByChatRoom(chatRoomId));
     }
 
     @DeleteMapping("/delete")

@@ -18,6 +18,7 @@ public class UserResponse {
     private String profileImageUrl;
     private UserState state;
     private UserRole userRole;
+    private String phoneNumber;
 
     @Getter
     @NoArgsConstructor

@@ -97,7 +97,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
         Thread.sleep(1000);
 
         ChatRoom room = chatRoomService.findByRoomName("채팅방1번");
@@ -118,7 +118,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
         Thread.sleep(1000);
 
         ChatRoom room = chatRoomService.findByRoomName("채팅방1번");
@@ -139,9 +139,8 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("open")
                 .build();
-
-        chatRoomService.createChatRoom(chatRegister, "test1");
-        assertThatThrownBy(() -> chatRoomService.createChatRoom(chatRegister, "test1"))
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
+        assertThatThrownBy(() -> chatRoomService.createChatRoom(chatRegister, null,"test1"))
                 .isInstanceOf(DuplicateChatRoomNameException.class)
                 .hasMessage("이미 존재하는 오픈채팅방입니다.");
     }
@@ -156,8 +155,8 @@ public class ChatTest {
                 .type("general")
                 .build();
 
-        chatRoomService.createChatRoom(chatRegister, "test1");
-        ChatRoom room = chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
+        ChatRoom room = chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         assertThat(room.getRoomName()).isEqualTo("채팅방1번");
     }
@@ -171,7 +170,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("채팅방1번");
         ChatRoomRequest.modify modify = ChatRoomRequest.modify.builder()
@@ -199,8 +198,8 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("open")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
-        chatRoomService.createChatRoom(chatRegister2, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
+        chatRoomService.createChatRoom(chatRegister2, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("채팅방1번");
         ChatRoomRequest.modify modify = ChatRoomRequest.modify.builder()
@@ -221,7 +220,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         UserRequest.modify modify = UserRequest.modify.builder()
                 .password("12345")
@@ -243,7 +242,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("test1, test2");
 
@@ -280,7 +279,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("채팅방1번");
 
@@ -306,7 +305,6 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
 
         ChatRoom room = chatRoomService.findByRoomName("test1, test2");
 
@@ -335,7 +333,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("test1, test2");
 
@@ -366,7 +364,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("open")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("오픈채팅방");
 
@@ -391,7 +389,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("test1, test2");
 
@@ -417,7 +415,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("test1, test2");
 
@@ -446,7 +444,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("test1, test2");
 
@@ -491,7 +489,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("최근메세지조회 채팅방");
 
@@ -520,7 +518,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
         User test2 = userService.findByNickname("test2");
 
         ChatRoom room = chatRoomService.findByRoomName("채팅방 알림 수 변경 채팅방");
@@ -548,7 +546,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
         User test2 = userService.findByNickname("test2");
 
         ChatRoom room = chatRoomService.findByRoomName("채팅방 알림 수 리셋 채팅방");
@@ -584,7 +582,7 @@ public class ChatTest {
                 .nicknames(nicknames)
                 .type("general")
                 .build();
-        chatRoomService.createChatRoom(chatRegister, "test1");
+        chatRoomService.createChatRoom(chatRegister, null,"test1");
 
         ChatRoom room = chatRoomService.findByRoomName("채팅방 고정/고정해제 방");
 

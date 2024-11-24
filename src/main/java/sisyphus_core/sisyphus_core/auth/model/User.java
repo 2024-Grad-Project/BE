@@ -42,6 +42,7 @@ public class User {
     private String name;
     private String describe;
     private String profileImageUrl;
+    private String phoneNumber;
 
     @Enumerated(value = EnumType.STRING)
     @Setter

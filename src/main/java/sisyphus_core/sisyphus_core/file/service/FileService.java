@@ -2,6 +2,7 @@ package sisyphus_core.sisyphus_core.file.service;
 
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,9 +27,7 @@ import sisyphus_core.sisyphus_core.file.repository.FileRepository;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -56,9 +55,17 @@ public class FileService {
         String fileUrl = "";
         StringBuilder fileUrls = new StringBuilder();
         for (MultipartFile file : files) {
-            fileUrl = uploadFile(file);
+            Map<String, Object> fileInfo = uploadFile(file);
+            fileUrl = (String) fileInfo.get("fileUrl");
+            Long fileSize = (Long) fileInfo.get("fileSize");
             fileUrls.append(fileUrl).append(",");
-            UploadFile uploadFile = UploadFile.builder().nickname(user.getNickname()).fileUrl(fileUrl).build();
+            UploadFile uploadFile = UploadFile.builder()
+                    .nickname(user.getNickname())
+                    .fileUrl(fileUrl)
+                    .fileSize(fileSize)
+                    .chatRoomId(roomId)
+                    .isReported(false)
+                    .build();
             fileRepository.save(uploadFile);
         }
 
@@ -77,30 +84,57 @@ public class FileService {
     }
 
     @Transactional
+    public String uploadAtChatRoom(MultipartFile file){
+        Map<String, Object> fileInfo = uploadFile(file);
+        return (String) fileInfo.get("fileUrl");
+    }
+
+    @Transactional
     public List<UploadFileResponse> findByUser(String loginId){
         User user = userRepository.findByLoginId(loginId).orElseThrow(() -> new UsernameNotFoundException("일치하는 유저가 없습니다."));
         return toResponse(fileRepository.findByNickname(user.getNickname()));
     }
 
-    public String uploadFile(MultipartFile file){
+    @Transactional
+    public List<UploadFileResponse> findByChatRoom(Long chatRoomId){
+        List<UploadFile> byChatRoomId = fileRepository.findByChatRoomId(chatRoomId);
+        return toResponse(byChatRoomId);
+    }
+
+    public Map<String, Object> uploadFile(MultipartFile file) {
 
         UUID uuid = UUID.randomUUID();
-
         String fileName = uuid + "_" + file.getOriginalFilename();
 
         File saveFile = new File(fileStoragePath, fileName);
 
         try {
+            // 로컬에 파일 저장
             file.transferTo(saveFile);
-        } catch(IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException("파일을 저장하는 동안 오류가 발생했습니다.");
         }
 
-        amazonS3Client.putObject(new PutObjectRequest(bucket, fileName, saveFile).withCannedAcl(CannedAccessControlList.PublicRead));
+        // S3에 파일 업로드
+        amazonS3Client.putObject(new PutObjectRequest(bucket, fileName, saveFile)
+                .withCannedAcl(CannedAccessControlList.PublicRead));
+
+        // 업로드된 파일의 URL 가져오기
         String fileUrl = amazonS3Client.getUrl(bucket, fileName).toString();
 
+        // S3에서 파일 메타데이터 가져오기
+        ObjectMetadata metadata = amazonS3Client.getObjectMetadata(bucket, fileName);
+        long fileSize = metadata.getContentLength(); // 파일 크기 (바이트 단위)
+
+        // 로컬 파일 삭제
         saveFile.delete();
-        return fileUrl;
+
+        // fileUrl과 fileSize를 Map으로 반환
+        Map<String, Object> response = new HashMap<>();
+        response.put("fileUrl", fileUrl);
+        response.put("fileSize", fileSize);
+
+        return response;
     }
 
     @Transactional
@@ -118,6 +152,8 @@ public class FileService {
                     .fileUrl(uploadFile.getFileUrl())
                     .createAt(uploadFile.getCreateAt())
                     .nickname(uploadFile.getNickname())
+                    .fileSize(uploadFile.getFileSize())
+                    .isReported(uploadFile.isReported())
                     .build();
 
             toResponseFile.add(uploadFileResponse);

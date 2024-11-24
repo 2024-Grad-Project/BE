@@ -13,4 +13,6 @@ public class UploadFileResponse {
     private String nickname;
     private String fileUrl;
     private ZonedDateTime createAt;
+    private boolean isReported;
+    private Long fileSize;
 }

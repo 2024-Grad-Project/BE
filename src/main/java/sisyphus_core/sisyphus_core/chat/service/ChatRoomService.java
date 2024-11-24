@@ -2,11 +2,13 @@ package sisyphus_core.sisyphus_core.chat.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import sisyphus_core.sisyphus_core.auth.model.User;
 import sisyphus_core.sisyphus_core.auth.model.dto.UserResponse;
 import sisyphus_core.sisyphus_core.auth.repository.UserRepository;
@@ -21,6 +23,7 @@ import sisyphus_core.sisyphus_core.chat.model.dto.ChatRoomType;
 import sisyphus_core.sisyphus_core.chat.model.dto.MessageType;
 import sisyphus_core.sisyphus_core.chat.repository.ChatRoomRepository;
 import sisyphus_core.sisyphus_core.chat.repository.UserChatRoomRepository;
+import sisyphus_core.sisyphus_core.file.service.FileService;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -37,15 +40,22 @@ public class ChatRoomService {
     private final MessageService messageService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final SimpMessagingTemplate template;
+    private final FileService fileService;
     private final String CHAT_ROOM_FIX = "채팅방을 고정하였습니다.";
     private final String CHAT_ROOM_UNFIX = "채팅방 고정을 해제하였습니다.";
 
+    @Value("${default.open.image.url}")
+    private String defaultChatImage;
+
     //채팅 방 생성
     @Transactional
-    public ChatRoom createChatRoom(ChatRoomRequest.register register,String loginId){
+    public ChatRoom createChatRoom(ChatRoomRequest.register register, MultipartFile file, String loginId){
         String roomName = register.getRoomName();
         String[] nicknames = register.getNicknames();
-        String type = register.getType();
+        String type = register.getType().toLowerCase();
+        String chatRoomImage = defaultChatImage;
+
+        if(file != null) chatRoomImage = fileService.uploadAtChatRoom(file);
         boolean customRoomName = true;
 
         User user = userRepository.findByLoginId(loginId).orElseThrow(() -> new UsernameNotFoundException("일치하는 유저가 없습니다."));
@@ -77,6 +87,7 @@ public class ChatRoomService {
                 .userCount(nicknames.length + 1)
                 .type(chatRoomType)
                 .customRoomName(customRoomName)
+                .chatRoomImage(chatRoomImage)
                 .build();
 
         chatRoomRepository.save(chatRoom);
@@ -115,6 +126,7 @@ public class ChatRoomService {
             template.convertAndSend("/queue/chatroom/list/" + nickname, toResponseChatRoom(chatRoom));
         }
 
+        if(type.equals("open")) createMessage = user.getNickname() + "님이 오픈채팅방을 생성하셨습니다.";
         Message message = Message.builder().type(MessageType.INVITE).message(createMessage).roomId(chatRoom.getChatRoomId()).senderName(user.getNickname()).build();
         messageService.join(message);
         template.convertAndSend("/queue/chatroom/list/" + user.getNickname(), toResponseChatRoom(chatRoom));
@@ -253,6 +265,7 @@ public class ChatRoomService {
         messageService.leave(message);
         deleteUserJoinTime(chatRoom.getChatRoomId(), user.getLoginId());
 
+        template.convertAndSend("/queue/chatroom/list/" + user.getNickname(), toResponseChatRoom(chatRoom));
         if(chatRoom.getUserCount() == 0) chatRoomRepository.deleteById(leave.getChatRoomId());
         else chatRoomRepository.save(chatRoom);
     }
@@ -300,6 +313,31 @@ public class ChatRoomService {
         }
     }
 
+    //오픈채팅방 리스트
+    @Transactional
+    public List<ChatRoomResponse.OpenChatRoom> getOpenChatRooms(){
+        List<ChatRoom> openChatRooms = chatRoomRepository.findByType(ChatRoomType.OPEN);
+
+        return toOpenChatRoom(openChatRooms);
+    }
+
+    protected List<ChatRoomResponse.OpenChatRoom> toOpenChatRoom(List<ChatRoom> openChatRooms){
+        List<ChatRoomResponse.OpenChatRoom> openChatRoomList = new ArrayList<>();
+        for (ChatRoom openChatRoom : openChatRooms) {
+            Message message = messageService.recentMessage(openChatRoom.getChatRoomId());
+            ChatRoomResponse.OpenChatRoom openChatRoom1 = ChatRoomResponse.OpenChatRoom.builder()
+                    .chatRoomId(openChatRoom.getChatRoomId()) // chatRoomId 추가
+                    .roomName(openChatRoom.getRoomName())
+                    .chatroomImage(openChatRoom.getChatRoomImage())
+                    .recentMessage(message.getMessage())
+                    .createAt(message.getCreateAt())
+                    .userCount(openChatRoom.getUserCount())
+                    .build();
+            openChatRoomList.add(openChatRoom1);
+        }
+        return openChatRoomList;
+    }
+
     //ResponseChatRoom으로 변환 -> 채팅방리스트 DTO
     @Transactional
     protected List<ChatRoomResponse> toResponseChatRoom(List<UserChatRoom> userChatRoomsByUser) {
@@ -331,7 +369,8 @@ public class ChatRoomService {
             ChatRoomResponse chatRoomResponse = ChatRoomResponse.builder()
                     .chatRoomId(chatRoom.getChatRoomId())
                     .type(chatRoom.getType())
-                    .roomName(chatRoom.getRoomName())
+                    .roomName(chatRoom.isCustomRoomName() ? chatRoom.getRoomName() : null) // customRoomName이 true일 때만 roomName 사용
+                    .customRoomName(chatRoom.isCustomRoomName() ? chatRoom.getRoomName() : null) // 사용자 정의 이름으로 설정
                     .userInfo(userInfo)
                     .userCount(chatRoom.getUserCount())
                     .recentMessage(recentMessage)

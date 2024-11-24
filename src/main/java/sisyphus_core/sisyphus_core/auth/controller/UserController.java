@@ -43,8 +43,8 @@ public class UserController {
     }
 
     @GetMapping("/info")
-    public ResponseEntity<UserResponse> info(Authentication auth){
-        return ResponseEntity.ok().body(userService.userInfo(auth.getName()));
+    public ResponseEntity<UserResponse> info(Authentication auth, @RequestParam(value ="nickname", required = false)String nickname){
+        return ResponseEntity.ok().body(userService.userInfo(auth.getName(),nickname));
     }
 
     //정보변경
@@ -85,6 +85,11 @@ public class UserController {
     public ResponseEntity<String> checkNickname(@RequestBody @Valid UserRequest.check check){
         userService.checkDuplicateNickname(check.getNickname());
         return ResponseEntity.ok("사용 가능한 닉네임입니다.");
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<List<UserResponse>> findAll() {
+        return ResponseEntity.ok().body(userService.findAllUser());
     }
 
     //유저 팔로우

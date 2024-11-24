@@ -15,6 +15,7 @@ public class ChatRoomRequest {
         private String roomName;
         private String[] nicknames;
         private String type;
+        private String chatRoomImage;
     }
 
     @Getter

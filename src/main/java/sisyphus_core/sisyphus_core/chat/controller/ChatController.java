@@ -1,11 +1,14 @@
 package sisyphus_core.sisyphus_core.chat.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import sisyphus_core.sisyphus_core.chat.model.ChatRoom;
 import sisyphus_core.sisyphus_core.chat.model.Message;
 import sisyphus_core.sisyphus_core.chat.model.dto.ChatRoomRequest;
@@ -26,11 +29,18 @@ public class ChatController {
 
     //채팅방 생성
     @PostMapping("/create")
-    public ResponseEntity<ChatRoom> createChatRoom(@RequestBody @Valid ChatRoomRequest.register register,Authentication auth){
-        ChatRoom room = chatRoomService.createChatRoom(register, auth.getName());
+    public ResponseEntity<ChatRoom> createChatRoom(
+            @RequestPart(value = "file", required = false) MultipartFile file,
+            @RequestPart(value = "register") String registerJson,
+            Authentication auth) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ChatRoomRequest.register register = objectMapper.readValue(registerJson, ChatRoomRequest.register.class);
+
+        ChatRoom room = chatRoomService.createChatRoom(register, file, auth.getName());
         return ResponseEntity.ok().body(room);
     }
 
+    //채팅방 수정
     @PutMapping("/modify")
     public ResponseEntity<String> modifyChatRoom(@RequestBody @Valid ChatRoomRequest.modify modify,Authentication auth){
         chatRoomService.modifyChatRoom(modify, auth.getName());
@@ -72,8 +82,13 @@ public class ChatController {
     }
 
     //채팅방 고정
-    @PutMapping("/fix/toggle")
+    @PutMapping("/pin/toggle")
     public ResponseEntity<String> toggleChatRoom(@RequestParam Long chatRoomId, Authentication auth){
         return ResponseEntity.ok(chatRoomService.toggleChatRoom(chatRoomId, auth.getName()));
+    }
+
+    @GetMapping("/find/list/open")
+    public ResponseEntity<List<ChatRoomResponse.OpenChatRoom>> getOpenChatList(){
+        return ResponseEntity.ok().body(chatRoomService.getOpenChatRooms());
     }
 }

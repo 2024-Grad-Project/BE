@@ -12,4 +12,6 @@ public interface FileRepository extends JpaRepository<UploadFile, Long> {
     List<UploadFile> findByNickname(String nickname);
 
     void deleteByFileUrl(String fileUrl);
+
+    List<UploadFile> findByChatRoomId(Long chatRoomId);
 }

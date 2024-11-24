@@ -31,6 +31,9 @@ public class ChatRoom {
     @Setter
     private boolean customRoomName;
 
+    @Setter
+    private String chatRoomImage;
+
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<UserChatRoom> userChatRooms = new ArrayList<>();

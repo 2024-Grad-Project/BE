@@ -26,6 +26,12 @@ public class UploadFile {
     @Lob
     private String fileUrl;
 
+    private Long fileSize;
+
+    private Long chatRoomId;
+
+    private boolean isReported;
+
     @Builder.Default
     private ZonedDateTime createAt = ZonedDateTime.now(ZoneId.of("Asia/Seoul"));
 }
