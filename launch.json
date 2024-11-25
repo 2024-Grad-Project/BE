@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Launch Spring Boot App",
+      "request": "launch",
+      "mainClass": "sisyphus_core.sisyphus_core.SisyphusCoreApplication", // 메인 클래스명으로 변경
+      "projectName": "your_project_name"
+    }
+  ]
+}
